@@ -1,0 +1,4 @@
+# List Python dependencies here
+# Example:
+# openai
+# pydantic
