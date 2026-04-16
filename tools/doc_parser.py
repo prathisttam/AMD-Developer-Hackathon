@@ -15,7 +15,7 @@ def parse_pdf(pdf_path, output_path=""):
 if __name__ == "__main__":
     folder_path = Path("docs")
     for file in folder_path.glob("*.pdf"):
-        output_path = Path("docs_output") / f"{file.stem}.txt"
+        output_path = Path("docs_output") / f"{file.stem}.md"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         parse_pdf(file, output_path)
         print(f"Parsed {file.name} to {output_path}")

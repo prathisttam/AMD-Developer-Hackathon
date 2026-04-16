@@ -3,5 +3,6 @@
 # openai
 # pydantic
 crewai
+crewai[tools]
 pytest
 liteparse
