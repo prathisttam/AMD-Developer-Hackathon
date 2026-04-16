@@ -4,4 +4,4 @@
 # pydantic
 crewai
 pytest
-pyodide-py
+liteparse
