@@ -2,3 +2,6 @@
 # Example:
 # openai
 # pydantic
+crewai
+pytest
+pyodide-py
