@@ -30,6 +30,24 @@ def test_main_agent_can_query_docs():
     result = crew.kickoff()
     assert result is not None and len(str(result)) > 0
 
+
+def test_harry_centaur_names():
+    from rlm.main_agent import main_agent
+
+    task = Task(
+        description="What are the exact names of the three centaurs Harry encounters in the Forbidden Forest?",
+        agent=main_agent,
+        expected_output="Ronan, Bane, and Firenze",
+    )
+    crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
+    result = crew.kickoff()
+    result_str = str(result).lower()
+    print(f"Result: {result}")
+    assert "ronan" in result_str and "bane" in result_str and "firenze" in result_str, (
+        f"Expected 'Ronan, Bane, and Firenze', got: {result}"
+    )
+
+
 """
 1. Factoid / Direct Retrieval
 Tests the LLM’s ability to find specific, explicitly stated entities (names, places, numbers).
