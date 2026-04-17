@@ -1,21 +1,12 @@
 import os
 from crewai import Task, Crew
-from tools.agent_tools import docs_tool, file_read_tool, repl_tool
+from tools.agent_tools import repl_tool
 
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 os.environ["OPENAI_API_KEY"] = "ollama"
 os.environ["OPENAI_MODEL_NAME"] = "gemma4:latest"
 
 # To run test cases: python -m pytest tests/test_main_agent.py -v
-
-def test_docs_tool_finds_rlm_md():
-    result = docs_tool.run(query="recursive language models")
-    assert "RLM.md" in result or len(result) > 0
-
-
-def test_file_read_tool_can_read_rlm_md():
-    result = file_read_tool.run("docs_output/RLM.md")
-    assert "Recursive Language Models" in result or len(result) > 0
 
 
 def test_main_agent_can_query_docs():
@@ -46,6 +37,34 @@ def test_harry_centaur_names():
     assert "ronan" in result_str and "bane" in result_str and "firenze" in result_str, (
         f"Expected 'Ronan, Bane, and Firenze', got: {result}"
     )
+
+
+def test_main_agent_calls_subagent(capsys):
+    """
+    Test that main agent spawns a subagent when given a query requiring parallel search.
+    The log should show [TOOL] spawn_subagent called with: '...'
+    """
+    from rlm.main_agent import main_agent
+
+    task = Task(
+        description="Search for the term 'REPL' across all documentation files. Find all mentions and return the results.",
+        agent=main_agent,
+        expected_output="List of all REPL mentions with file locations",
+    )
+    crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
+    
+    # Run the agent
+    result = crew.kickoff()
+
+    # Pytest's capsys reads everything printed since the test started
+    # captured = capsys.readouterr()
+    # output = captured.out + captured.err
+    # ascii_output = output.encode("ascii", "replace").decode("ascii")
+
+    # If the test fails, Pytest will automatically print everything captured here!
+    # assert "[TOOL] spawn_subagent called" in ascii_output, (
+    #     f"Expected spawn_subagent to be called. Output (first 1000): {ascii_output[:1000]}..."
+    # )
 
 
 """

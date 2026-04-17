@@ -1,6 +1,5 @@
 import os
 import traceback
-from crewai_tools import DirectoryReadTool, FileReadTool
 
 DOCS_OUTPUT_DIR = "./docs_output"
 
@@ -114,7 +113,7 @@ def grep(pattern: str, context_lines: int = 3) -> str:
 
 def spawn_subagent(query: str) -> str:
     """Spawn a subagent to answer a query. The subagent will explore the docs_output folder and return the result."""
-    print(f"[TOOL] spawn_subagent called with: '{query}'")
+    print(f"[TOOL] spawn_subagent called with following query: '{query}'")
     try:
         agent = get_sub_agent()
         result = agent.kickoff(messages=[{"role": "user", "content": query}])
@@ -123,7 +122,7 @@ def spawn_subagent(query: str) -> str:
     except Exception as e:
         traceback.print_exc()
         print(f"[TOOL] spawn_subagent error: {type(e).__name__}: {e}")
-        return f"Error spawning subagent: {type(e).__name__}: {e}"
+        raise ValueError(f"Error spawning subagent: {type(e).__name__}: {e}")
 
 
 def create_repl_tool():
@@ -139,7 +138,7 @@ def create_repl_tool():
             "- ls() - list all files\n"
             "- search('query') - search files by name\n"
             "- grep('pattern', context_lines=3) - search file contents with context\n"
-            "- spawn_subagent('query') - spawn subagent for complex searches\n"
+            "- spawn_subagent('your query in natural language') - spawn subagent for targeted searches and will return result in natural language\n"
             "VALID examples (write these in your code):\n"
             "  grep('three centaurs Forbidden Forest', context_lines=10)\n"
             "  read_range('harrypotter.md', 100, 150)\n"
@@ -202,6 +201,4 @@ def create_repl_tool():
     return DocsOutputREPLTool()
 
 
-docs_tool = DirectoryReadTool(directory="./docs_output", file_types=[".md"])
-file_read_tool = FileReadTool()
 repl_tool = create_repl_tool()
