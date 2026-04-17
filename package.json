@@ -1,6 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "@llamaindex/liteparse": "^1.4.6"
-  }
-}

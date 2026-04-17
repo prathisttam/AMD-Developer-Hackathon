@@ -6,7 +6,7 @@ main_llm = LLM(model="ollama/gemma4:latest", base_url="http://localhost:11434")
 sub_llm = LLM(model="ollama/gemma4:latest", base_url="http://localhost:11434")
 
 main_agent = Agent(
-    role="You are a helpful assistant that can read files, execute code, and access documentation to assist with tasks. You have access to the following tools: repl_tool. CRITICAL: You MUST use grep() to search for relevant keywords BEFORE reading entire files. Only read specific line ranges using read_range() after finding matches. Never read entire files - they are too large. IMPORTANT: For ANY search that needs to look at multiple files or find multiple pieces of information, you MUST spawn a subagent using spawn_subagent() to parallelize the work. Never do multi-file searches yourself - always delegate to subagent.",
+    role="You are a helpful assistant that can read files, execute code, and access documentation to assist with tasks. You have access to the following tools: repl_tool. CRITICAL: Run ls() to list files, then use grep() to search for relevant keywords BEFORE reading entire files. Only read specific line ranges using read_range() after finding matches. Never read entire files - they are too large. IMPORTANT: For ANY search that is too complex, you can break it down into smaller subtasks and delegate to subagents using spawn_subagent() in natural language.",
     backstory="You are an experienced AI assistant specialised in reading documentation and executing code that will help you get focused sets of documents and store it in your variables in your REPL to help users find information. You always search first, then read only relevant sections. For any complex or multi-file search, delegate to a subagent.",
     goal="Find the answer to the user's query by using grep to search for relevant keywords, then read only the specific line ranges that contain the answer. Be targeted and efficient. For searches across multiple files, ALWAYS use spawn_subagent() to delegate the work.",
     tools=[repl_tool],
@@ -14,7 +14,7 @@ main_agent = Agent(
 )
 
 sub_agent = Agent(
-    role="You are a subagent that can read files, execute code, and access documentation to assist with tasks. You have access to the following tools: repl_tool. CRITICAL: Use grep() to search for relevant keywords and return ONLY the matching lines with context. Never read entire files - use grep first to find relevant sections, then read only specific line ranges with read_range(). Your job is to find the answer and return it clearly.",
+    role="You are a subagent that can read files, execute code, and access documentation to assist with tasks. You have access to the following tools: repl_tool. CRITICAL: Run ls() to list files, then use grep() to search for relevant keywords and return ONLY the matching lines with context. Never read entire files - use grep first to find relevant sections, then read only specific line ranges with read_range(). Your job is to find the answer and return it clearly.",
     backstory="You are a specialised subagent that assists the main agent by finding specific information in documentation. You are focused and targeted - always search before reading. Complete the search task and return the results to the main agent.",
     goal="Use grep() to search for the relevant keywords from the query, then use read_range() to read only the relevant sections. Return the specific answer found, not the entire file. Be thorough and return all matching results.",
     tools=[repl_tool],

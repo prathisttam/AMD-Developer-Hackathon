@@ -69,7 +69,7 @@ def ls() -> str:
         return "docs_output folder does not exist"
     files = os.listdir(DOCS_OUTPUT_DIR)
     result = "\n".join(files) if files else "No files found"
-    print(f"[TOOL] ls result: {len(files)} files")
+    print(f"[TOOL] ls result: {result}")
     return result
 
 
@@ -85,27 +85,30 @@ def search(query: str) -> str:
     return result
 
 
-def grep(pattern: str, context_lines: int = 3) -> str:
-    """Search contents of all files in docs_output for pattern. Returns matching lines with context (default 3 lines before/after)."""
-    print(f"[TOOL] grep called with: '{pattern}', context_lines={context_lines}")
+def grep(filename: str, pattern: str, context_lines: int = 3) -> str:
+    """Search contents of a specific file for pattern. Returns matching lines with context (default 3 lines before/after)."""
+    print(
+        f"[TOOL] grep called with: '{filename}', '{pattern}', context_lines={context_lines}"
+    )
     if not os.path.exists(DOCS_OUTPUT_DIR):
         print(f"[TOOL] grep result: docs_output folder does not exist")
         return "docs_output folder does not exist"
+    path = os.path.join(DOCS_OUTPUT_DIR, filename)
+    if not os.path.exists(path):
+        print(f"[TOOL] grep result: File not found")
+        raise FileNotFoundError(f"File not found: {filename}")
     results = []
-    for filename in os.listdir(DOCS_OUTPUT_DIR):
-        path = os.path.join(DOCS_OUTPUT_DIR, filename)
-        if os.path.isfile(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                    for i, line in enumerate(lines):
-                        if pattern.lower() in line.lower():
-                            start = max(0, i - context_lines)
-                            end = min(len(lines), i + context_lines + 1)
-                            context = "".join(lines[start:end])
-                            results.append(f"=== {filename}:{i + 1} ===\n{context}")
-            except Exception:
-                pass
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            for i, line in enumerate(lines):
+                if pattern.lower() in line.lower():
+                    start = max(0, i - context_lines)
+                    end = min(len(lines), i + context_lines + 1)
+                    context = "".join(lines[start:end])
+                    results.append(f"=== {filename}:{i + 1} ===\n{context}")
+    except Exception:
+        pass
     result = "\n---\n".join(results) if results else f"No matches found for: {pattern}"
     print(f"[TOOL] grep result: {len(results)} matches")
     return result
@@ -137,10 +140,10 @@ def create_repl_tool():
             "- read_range('filename', start_line, end_line) - read specific line range\n"
             "- ls() - list all files\n"
             "- search('query') - search files by name\n"
-            "- grep('pattern', context_lines=3) - search file contents with context\n"
-            "- spawn_subagent('your query in natural language') - spawn subagent for targeted searches and will return result in natural language\n"
+            "- grep('filename', 'pattern', context_lines=3) - search file contents with context\n"
+            "- spawn_subagent('your query in natural language') - break down your task into smaller subtasks and delegate to subagents in natural language\n"
             "VALID examples (write these in your code):\n"
-            "  grep('three centaurs Forbidden Forest', context_lines=10)\n"
+            "  grep('harrypotter.md', 'three centaurs Forbidden Forest', context_lines=10)\n"
             "  read_range('harrypotter.md', 100, 150)\n"
             "  ls()\n"
             "  read('chapter1.md')\n"
@@ -188,12 +191,8 @@ def create_repl_tool():
 
             try:
                 print(f"[REPL] Executing code:\n{code}\n---")
-                result = eval(code, safe_globals)
-                if result is None:
-                    print("[REPL] Result: (none)")
-                    return "Executed successfully (no output)"
-                print(f"[REPL] Result: {result}")
-                return str(result)
+                exec(code, safe_globals)
+                return "Executed successfully"
             except Exception as e:
                 traceback.print_exc()
                 return f"Error: {type(e).__name__}: {e}"

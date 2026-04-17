@@ -1,13 +1,12 @@
 import os
 from crewai import Task, Crew
-from tools.agent_tools import repl_tool
 
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 os.environ["OPENAI_API_KEY"] = "ollama"
 os.environ["OPENAI_MODEL_NAME"] = "gemma4:latest"
 
-# To run test cases: python -m pytest tests/test_main_agent.py -v
-
+# To run test cases: python -m pytest tests/test_main_agent.py -v -s
+# To run specified test cases: python -m pytest tests/test_main_agent.py::{test_case_name} -v -s
 
 def test_main_agent_can_query_docs():
     from rlm.main_agent import main_agent
@@ -22,24 +21,35 @@ def test_main_agent_can_query_docs():
     assert result is not None and len(str(result)) > 0
 
 
-def test_harry_centaur_names():
+def test_zero_shot_self_routing():
     from rlm.main_agent import main_agent
 
     task = Task(
-        description="What are the exact names of the three centaurs Harry encounters in the Forbidden Forest?",
+        description="According to the findings in select-then-solve, why isn't zero-shot self-routing a universally effective strategy for all LLMs?",
         agent=main_agent,
-        expected_output="Ronan, Bane, and Firenze",
+        expected_output="Explanation of why zero-shot self-routing isn't effective for all LLMs",
     )
     crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
     result = crew.kickoff()
-    result_str = str(result).lower()
+
+    # Expected answer is something like: "The paper demonstrates that zero-shot self-routing relies heavily on the baseline capability of the model. It was only effective for the most capable model tested (GPT-5, achieving 67.1%), but failed for weaker models, indicating it is not a viable strategy across the board."
     print(f"Result: {result}")
-    assert "ronan" in result_str and "bane" in result_str and "firenze" in result_str, (
-        f"Expected 'Ronan, Bane, and Firenze', got: {result}"
+
+def test_zero_shot_self_routing():
+    from rlm.main_agent import main_agent
+
+    task = Task(
+        description="According to the text, what specific reinforcement learning algorithm was used to train the PARADIGM router?",
+        agent=main_agent,
+        expected_output="Specific reinforcement learning algorithm used to train PARADIGM router",
     )
+    crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
+    result = crew.kickoff()
+
+    print(f"Result: {result}")
 
 
-def test_main_agent_calls_subagent(capsys):
+def test_main_agent_calls_subagent():
     """
     Test that main agent spawns a subagent when given a query requiring parallel search.
     The log should show [TOOL] spawn_subagent called with: '...'
@@ -54,12 +64,7 @@ def test_main_agent_calls_subagent(capsys):
     crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
     
     # Run the agent
-    result = crew.kickoff()
-
-    # Pytest's capsys reads everything printed since the test started
-    # captured = capsys.readouterr()
-    # output = captured.out + captured.err
-    # ascii_output = output.encode("ascii", "replace").decode("ascii")
+    crew.kickoff()
 
     # If the test fails, Pytest will automatically print everything captured here!
     # assert "[TOOL] spawn_subagent called" in ascii_output, (
@@ -69,49 +74,37 @@ def test_main_agent_calls_subagent(capsys):
 
 """
 1. Factoid / Direct Retrieval
-Tests the LLM’s ability to find specific, explicitly stated entities (names, places, numbers).
+Tests if the LLM can locate specific entities and acronyms without relying on prior knowledge.
 
-Query: Where exactly does Harry sleep at the Dursleys' house before he is moved to Dudley's second bedroom?
+Query: What is the name of the unified evaluation framework introduced in the paper to test inference-time reasoning strategies?
 
-Answer: In the cupboard under the stairs.
-
-Query: What are the exact names of the three centaurs Harry encounters in the Forbidden Forest?
-
-Answer: Ronan, Bane, and Firenze.
+Answer: PARADIGM.
 
 2. Multi-Hop / Aggregation
-Tests the LLM’s ability to pull together information from different parts of the text or combine two related facts.
+Tests if the system can accurately pull together distinct data points from the text.
 
-Query: Who arranged for Harry to receive the Nimbus 2000 broomstick, and what specific position was he chosen to play on the Gryffindor Quidditch team?
+Query: Which four large language models were evaluated using the framework, and what was the exact improvement in average accuracy achieved by the learned router compared to the Direct prompting baseline?
 
-Answer: Professor McGonagall arranged for the broomstick, and he plays the position of Seeker.
-
-Query: Which three professors helped create the obstacles guarding the Sorcerer's Stone, and what was the specific obstacle created by Professor Sprout?
-
-Answer: Professors Sprout, Flitwick, McGonagall, Quirrell, and Snape (any three of these, plus Dumbledore). Professor Sprout provided the Devil's Snare plant.
+Answer: The models evaluated were GPT-5, Gemini-3-Flash, Qwen3-Max, and Qwen3-30B. The router improved average accuracy from 47.6% (Direct) to 53.1%.
 
 3. Reasoning / Implicit Context
-Tests the LLM’s ability to understand cause and effect, or to infer why an event happened based on retrieved context.
+Tests the LLM's ability to synthesize a conclusion explicitly stated in the findings.
 
-Query: Why did Harry and Ron accidentally lock the mountain troll inside the girls' bathroom?
+Query: According to the findings, why isn't zero-shot self-routing a universally effective strategy for all LLMs?
 
-Answer: They were trying to lock the troll away to trap it, but they didn't realize until it was too late that Hermione was inside that specific bathroom.
-
-Query: How does Harry ultimately manage to get the Sorcerer's Stone out of the Mirror of Erised?
-
-Answer: Because he only wanted to find the stone, not use it. The mirror's magic was designed by Dumbledore to only yield the stone to someone who wanted to find it but not use it for selfish gain.
+Answer: The paper demonstrates that zero-shot self-routing relies heavily on the baseline capability of the model. It was only effective for the most capable model tested (GPT-5, achieving 67.1%), but failed for weaker models, indicating it is not a viable strategy across the board.
 
 4. Quote / Exact Extraction
-Tests the LLM’s ability to pull an exact string of text rather than paraphrasing.
+Forces the LLM to locate and extract a precise string, proving it is looking at the source text.
 
-Query: What is the exact inscription written around the top of the Mirror of Erised?
+Query: What is the exact sentence the authors use to summarize their argument about how reasoning paradigm selection should be handled?
 
-Answer: "Erised stra ehru oyt ube cafru oyt on wohsi"
+Answer: "Our results argue that reasoning paradigm selection should be a per-task decision made by a learned router, not a fixed architectural choice."
 
 5. Distractor / Negative Constraint
-Tests if the LLM hallucinates outside knowledge or relies strictly on the provided text.
+Tests if the LLM hallucinated an answer that sounds plausible but isn't actually in the text.
 
-Query: According to the text, what spell does Hermione use to fix Harry's glasses on the Hogwarts Express?
+Query: According to the text, what specific reinforcement learning algorithm was used to train the PARADIGM router?
 
-Answer: Hermione does not fix Harry's glasses on the Hogwarts Express in the text of the book. (Note: She fixes them in Diagon Alley in the movie adaptation, making this a great test to see if the LLM relies on its training data instead of your specific PDF document).
+Answer: The text mentions that recent work has explored reinforcement learning for inference-time reasoning, but it does not specify the exact reinforcement learning algorithm used to train the PARADIGM router itself.
 """
