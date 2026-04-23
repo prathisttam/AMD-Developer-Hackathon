@@ -26,8 +26,9 @@ def test_repl_tool_persists_state_between_calls():
 
     assert result.strip() == "42"
 
+
 def test_main_agent_can_query_docs():
-    from rlm.main_agent import main_agent
+    from rlm.agents import main_agent
 
     task = Task(
         description="What is the paper about? Find information about RLMs in the docs.",
@@ -40,7 +41,7 @@ def test_main_agent_can_query_docs():
 
 
 def test_zero_shot_self_routing():
-    from rlm.main_agent import main_agent
+    from rlm.agents import main_agent
 
     task = Task(
         description="According to the findings in select-then-solve, why isn't zero-shot self-routing a universally effective strategy for all LLMs?",
@@ -59,7 +60,7 @@ def test_main_agent_calls_subagent():
     Test that main agent spawns a subagent when given a query requiring parallel search.
     The log should show [TOOL] spawn_subagent called with: '...'
     """
-    from rlm.main_agent import main_agent
+    from rlm.agents import main_agent
 
     task = Task(
         description="Search for the term 'REPL' across all documentation files. Find all mentions and return the results.",
@@ -67,7 +68,7 @@ def test_main_agent_calls_subagent():
         expected_output="List of all REPL mentions with file locations",
     )
     crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
-    
+
     # Run the agent
     crew.kickoff()
 
