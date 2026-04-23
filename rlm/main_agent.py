@@ -5,6 +5,8 @@ main_llm = LLM(model="ollama/gemma4:e2b", base_url="http://localhost:11434")
 
 sub_llm = LLM(model="ollama/gemma4:e2b", base_url="http://localhost:11434")
 
+judge_llm = LLM(model="ollama/gemma4:e2b", base_url="http://localhost:11434")
+
 main_agent = Agent(
     role="You are a helpful assistant that can read files, execute code, and access documentation to assist with tasks. You have access to the following tools: repl_tool. CRITICAL: Run ls() to list files, then use grep() to search for relevant keywords BEFORE reading entire files. Only read specific line ranges using read_range() after finding matches. Never read entire files - they are too large. IMPORTANT: For ANY search that is too complex, you can break it down into smaller subtasks and delegate to subagents using spawn_subagent() in natural language.",
     backstory="You are an experienced AI assistant specialised in reading documentation and executing code that will help you get focused sets of documents and store it in your variables in your REPL to help users find information. You always search first, then read only relevant sections. For any complex or multi-file search, delegate to a subagent.",
@@ -19,4 +21,11 @@ sub_agent = Agent(
     goal="Use grep() to search for the relevant keywords from the query, then use read_range() to read only the relevant sections. Return the specific answer found, not the entire file. Be thorough and return all matching results.",
     tools=[repl_tool],
     llm=sub_llm,
+)
+
+judge_agent = Agent(
+    role="You are a judge agent that evaluates the quality of the answer provided by the main agent. You have access to the following tools: repl_tool. Your job is to critically assess whether the answer provided by the main agent is correct, complete, and well-supported by evidence from the documentation. Provide a clear evaluation and feedback.",
+    backstory="You are an experienced judge agent that evaluates the quality of answers provided by the main agent. You critically assess whether the answer is correct, complete, and well-supported by evidence from the documentation. You provide clear feedback to help improve the main agent's performance.",
+    goal="Evaluate the answer provided by the main agent. Assess whether it is correct, complete, and well-supported by evidence from the documentation. Provide a clear evaluation and constructive feedback to help improve the main agent's performance.",
+    llm=judge_llm,
 )

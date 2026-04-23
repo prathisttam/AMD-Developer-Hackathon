@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 DOCS_OUTPUT_DIR = "./docs_output"
 
 sub_agent = None
+judge_agent = None
 
 
 def get_sub_agent():
@@ -18,12 +19,21 @@ def get_sub_agent():
     return sub_agent
 
 
+def get_judge_agent():
+    global judge_agent
+    if judge_agent is None:
+        from rlm.main_agent import judge_agent as agent
+
+        judge_agent = agent
+    return judge_agent
+
+
 def read(filename: str, max_chars: int = 10000) -> str:
     """Read a file from docs_output folder. Returns up to max_chars (default 10000)."""
     print(f"[TOOL] read called with: '{filename}', max_chars={max_chars}")
     path = os.path.join(DOCS_OUTPUT_DIR, filename)
     if not os.path.exists(path):
-        print(f"[TOOL] read result: File not found")
+        print("[TOOL] read result: File not found")
         return f"File not found: {filename}"
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -43,7 +53,7 @@ def read_range(filename: str, start: int, end: int) -> str:
     print(f"[TOOL] read_range called with: '{filename}', lines {start}-{end}")
     path = os.path.join(DOCS_OUTPUT_DIR, filename)
     if not os.path.exists(path):
-        print(f"[TOOL] read_range result: File not found")
+        print("[TOOL] read_range result: File not found")
         return f"File not found: {filename}"
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -66,9 +76,9 @@ def read_range(filename: str, start: int, end: int) -> str:
 
 def ls() -> str:
     """List all files in docs_output folder."""
-    print(f"[TOOL] ls called")
+    print("[TOOL] ls called")
     if not os.path.exists(DOCS_OUTPUT_DIR):
-        print(f"[TOOL] ls result: docs_output folder does not exist")
+        print("[TOOL] ls result: docs_output folder does not exist")
         return "docs_output folder does not exist"
     files = os.listdir(DOCS_OUTPUT_DIR)
     result = "\n".join(files) if files else "No files found"
@@ -80,7 +90,7 @@ def search(query: str) -> str:
     """Search files in docs_output by name containing query."""
     print(f"[TOOL] search called with: '{query}'")
     if not os.path.exists(DOCS_OUTPUT_DIR):
-        print(f"[TOOL] search result: docs_output folder does not exist")
+        print("[TOOL] search result: docs_output folder does not exist")
         return "docs_output folder does not exist"
     files = [f for f in os.listdir(DOCS_OUTPUT_DIR) if query.lower() in f.lower()]
     result = "\n".join(files) if files else f"No files found matching: {query}"
@@ -94,11 +104,11 @@ def grep(filename: str, pattern: str, context_lines: int = 3) -> str:
         f"[TOOL] grep called with: '{filename}', '{pattern}', context_lines={context_lines}"
     )
     if not os.path.exists(DOCS_OUTPUT_DIR):
-        print(f"[TOOL] grep result: docs_output folder does not exist")
+        print("[TOOL] grep result: docs_output folder does not exist")
         return "docs_output folder does not exist"
     path = os.path.join(DOCS_OUTPUT_DIR, filename)
     if not os.path.exists(path):
-        print(f"[TOOL] grep result: File not found")
+        print("[TOOL] grep result: File not found")
         raise FileNotFoundError(f"File not found: {filename}")
     results = []
     try:
@@ -129,6 +139,29 @@ def spawn_subagent(query: str) -> str:
         traceback.print_exc()
         print(f"[TOOL] spawn_subagent error: {type(e).__name__}: {e}")
         raise ValueError(f"Error spawning subagent: {type(e).__name__}: {e}")
+
+
+def judge_response(query: str, response: str) -> bool:
+    """Use the model to check if the response adequately answers the query. Returns True if it does, False otherwise."""
+    print(
+        f"[TOOL] judge_response called with query: '{query}' and response length: {len(response)}"
+    )
+    try:
+        agent = get_judge_agent()
+        result = agent.kickoff(
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Query: {query}\n\nResponse: {response}\n\nDoes the response adequately answer the query? Answer with 'Yes' or 'No'.",
+                }
+            ]
+        )
+        print(f"[TOOL] judge_response result: {result}")
+        return str(result).strip().lower() == "yes"
+    except Exception as e:
+        traceback.print_exc()
+        print(f"[TOOL] judge_response error: {type(e).__name__}: {e}")
+        raise ValueError(f"Error judging response: {type(e).__name__}: {e}")
 
 
 def create_repl_tool():
@@ -239,7 +272,9 @@ def create_repl_tool():
                 if last_value is not None:
                     output_parts.append(str(last_value))
 
-                return "\n".join(output_parts) if output_parts else "Executed successfully"
+                return (
+                    "\n".join(output_parts) if output_parts else "Executed successfully"
+                )
             except Exception as e:
                 traceback.print_exc()
                 return f"Error: {type(e).__name__}: {e}"
