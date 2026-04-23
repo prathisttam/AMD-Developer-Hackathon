@@ -3,10 +3,28 @@ from crewai import Task, Crew
 
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 os.environ["OPENAI_API_KEY"] = "ollama"
-os.environ["OPENAI_MODEL_NAME"] = "gemma4:latest"
+os.environ["OPENAI_MODEL_NAME"] = "gemma4:e2b"
 
 # To run test cases: python -m pytest tests/test_main_agent.py -v -s
 # To run specified test cases: python -m pytest tests/test_main_agent.py::{test_case_name} -v -s
+
+
+def test_repl_tool_returns_function_results():
+    from tools.agent_tools import repl_tool
+
+    result = repl_tool._run("ls()")
+
+    assert isinstance(result, str)
+    assert result != "Executed successfully"
+
+
+def test_repl_tool_persists_state_between_calls():
+    from tools.agent_tools import repl_tool
+
+    repl_tool._run("saved_value = 42")
+    result = repl_tool._run("saved_value")
+
+    assert result.strip() == "42"
 
 def test_main_agent_can_query_docs():
     from rlm.main_agent import main_agent
@@ -33,19 +51,6 @@ def test_zero_shot_self_routing():
     result = crew.kickoff()
 
     # Expected answer is something like: "The paper demonstrates that zero-shot self-routing relies heavily on the baseline capability of the model. It was only effective for the most capable model tested (GPT-5, achieving 67.1%), but failed for weaker models, indicating it is not a viable strategy across the board."
-    print(f"Result: {result}")
-
-def test_zero_shot_self_routing():
-    from rlm.main_agent import main_agent
-
-    task = Task(
-        description="According to the text, what specific reinforcement learning algorithm was used to train the PARADIGM router?",
-        agent=main_agent,
-        expected_output="Specific reinforcement learning algorithm used to train PARADIGM router",
-    )
-    crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
-    result = crew.kickoff()
-
     print(f"Result: {result}")
 
 

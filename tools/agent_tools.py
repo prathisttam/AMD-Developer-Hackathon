@@ -1,5 +1,8 @@
 import os
+import ast
+import io
 import traceback
+from contextlib import redirect_stdout
 
 DOCS_OUTPUT_DIR = "./docs_output"
 
@@ -149,50 +152,94 @@ def create_repl_tool():
             "  read('chapter1.md')\n"
             "INVALID (DO NOT use):\n"
             "  repl_tool.grep('pattern') - NOT a method call\n"
-            "  docs_tool.read('file') - no such object"
+            "  docs_tool.read('file') - no such object\n"
+            "IMPORTANT: The return value of this tool is added to the agent context. "
+            "To make results available to the agent, either print them or put the value you want as the final expression.\n"
+            "Examples:\n"
+            "  files = ls()\n"
+            "  files\n"
+            "  print(grep('paper.md', 'RLM'))"
         )
+        _session_globals: dict | None = None
+
+        def _get_session_globals(self) -> dict:
+            if self._session_globals is None:
+                allowed_builtins = {
+                    "len": len,
+                    "str": str,
+                    "int": int,
+                    "float": float,
+                    "list": list,
+                    "dict": dict,
+                    "tuple": tuple,
+                    "set": set,
+                    "print": print,
+                    "range": range,
+                    "enumerate": enumerate,
+                    "zip": zip,
+                    "map": map,
+                    "filter": filter,
+                    "sorted": sorted,
+                    "min": min,
+                    "max": max,
+                    "abs": abs,
+                    "sum": sum,
+                    "any": any,
+                    "all": all,
+                    "True": True,
+                    "False": False,
+                    "None": None,
+                }
+                self._session_globals = {
+                    "__builtins__": allowed_builtins,
+                    "read": read,
+                    "read_range": read_range,
+                    "ls": ls,
+                    "search": search,
+                    "grep": grep,
+                    "spawn_subagent": spawn_subagent,
+                }
+            return self._session_globals
 
         def _run(self, code: str) -> str:
-            allowed_builtins = {
-                "len": len,
-                "str": str,
-                "int": int,
-                "float": float,
-                "list": list,
-                "dict": dict,
-                "tuple": tuple,
-                "set": set,
-                "print": print,
-                "range": range,
-                "enumerate": enumerate,
-                "zip": zip,
-                "map": map,
-                "filter": filter,
-                "sorted": sorted,
-                "min": min,
-                "max": max,
-                "abs": abs,
-                "sum": sum,
-                "any": any,
-                "all": all,
-                "True": True,
-                "False": False,
-                "None": None,
-            }
-            safe_globals = {
-                "__builtins__": allowed_builtins,
-                "read": read,
-                "read_range": read_range,
-                "ls": ls,
-                "search": search,
-                "grep": grep,
-                "spawn_subagent": spawn_subagent,
-            }
-
             try:
                 print(f"[REPL] Executing code:\n{code}\n---")
-                exec(code, safe_globals)
-                return "Executed successfully"
+                safe_globals = self._get_session_globals()
+                stdout = io.StringIO()
+                last_value = None
+
+                parsed = ast.parse(code, mode="exec")
+                body = parsed.body
+                final_expr = None
+
+                if body and isinstance(body[-1], ast.Expr):
+                    final_expr = ast.Expression(body[-1].value)
+                    body = body[:-1]
+
+                with redirect_stdout(stdout):
+                    if body:
+                        exec(
+                            compile(
+                                ast.Module(body=body, type_ignores=[]),
+                                "<repl_tool>",
+                                "exec",
+                            ),
+                            safe_globals,
+                        )
+                    if final_expr is not None:
+                        last_value = eval(
+                            compile(final_expr, "<repl_tool>", "eval"),
+                            safe_globals,
+                        )
+
+                output_parts = []
+                printed = stdout.getvalue().strip()
+                if printed:
+                    output_parts.append(printed)
+                if last_value is not None:
+                    output_parts.append(str(last_value))
+
+                return "\n".join(output_parts) if output_parts else "Executed successfully"
             except Exception as e:
                 traceback.print_exc()
                 return f"Error: {type(e).__name__}: {e}"
