@@ -3,6 +3,7 @@ import ast
 import io
 import traceback
 from contextlib import redirect_stdout
+from crewai import Agent
 
 DOCS_OUTPUT_DIR = "./docs_output"
 
@@ -19,7 +20,7 @@ def get_sub_agent():
     return sub_agent
 
 
-def get_judge_agent():
+def get_judge_agent() -> Agent:
     global judge_agent
     if judge_agent is None:
         from rlm.agents import judge_agent as agent
@@ -152,9 +153,14 @@ def judge_response(query: str, response: str) -> bool:
             messages=[
                 {
                     "role": "user",
-                    "content": f"Query: {query}\n\nResponse: {response}\n\nDoes the response adequately answer the query? Answer with 'Yes' or 'No'.",
+                    "content": f"""
+                    Given the {response} for this query: {query}\n
+
+                    Give a score between 0.0 to 1.0 for the response's relevance to the query. 
+                    Make sure to also provide a reasoning for your score
+                    """,
                 }
-            ]
+            ],
         )
         print(f"[TOOL] judge_response result: {result}")
         return str(result).strip().lower() == "yes"
