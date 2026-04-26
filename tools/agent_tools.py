@@ -13,7 +13,7 @@ judge_agent = None
 def get_sub_agent():
     global sub_agent
     if sub_agent is None:
-        from rlm.main_agent import sub_agent as agent
+        from rlm.agents import sub_agent as agent
 
         sub_agent = agent
     return sub_agent
@@ -22,7 +22,7 @@ def get_sub_agent():
 def get_judge_agent():
     global judge_agent
     if judge_agent is None:
-        from rlm.main_agent import judge_agent as agent
+        from rlm.agents import judge_agent as agent
 
         judge_agent = agent
     return judge_agent
