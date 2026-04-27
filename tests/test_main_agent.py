@@ -1,9 +1,10 @@
 import os
+
 from crewai import Task, Crew
 
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 os.environ["OPENAI_API_KEY"] = "ollama"
-os.environ["OPENAI_MODEL_NAME"] = "gemma4:e2b"
+os.environ["OPENAI_MODEL_NAME"] = "gemma4:latest"
 
 # To run test cases: python -m pytest tests/test_main_agent.py -v -s
 # To run specified test cases: python -m pytest tests/test_main_agent.py::{test_case_name} -v -s
@@ -28,15 +29,13 @@ def test_repl_tool_persists_state_between_calls():
 
 
 def test_main_agent_can_query_docs():
-    from rlm.agents import main_agent
+    from rlm.main_loop import MainLoop
 
-    task = Task(
-        description="What is the paper about? Find information about RLMs in the docs.",
-        agent=main_agent,
-        expected_output="Information about Recursive Language Models",
+    agent_loop = MainLoop()
+    result = agent_loop.main_loop(
+        "What is the paper about? Find information about RLMs in the docs."
     )
-    crew = Crew(agents=[main_agent], tasks=[task], verbose=True)
-    result = crew.kickoff()
+
     assert result is not None and len(str(result)) > 0
 
 

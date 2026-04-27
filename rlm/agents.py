@@ -24,8 +24,9 @@ sub_agent = Agent(
 )
 
 judge_agent = Agent(
-    role="You are a judge agent that evaluates the quality of the answer provided by the main agent. You have access to the following tools: repl_tool. Your job is to critically assess whether the answer provided by the main agent is correct, complete, and well-supported by evidence from the documentation. Provide a clear evaluation and feedback.",
-    backstory="You are an experienced judge agent that evaluates the quality of answers provided by the main agent. You critically assess whether the answer is correct, complete, and well-supported by evidence from the documentation. You provide clear feedback to help improve the main agent's performance.",
-    goal="Evaluate the answer provided by the main agent. Assess whether it is correct, complete, and well-supported by evidence from the documentation. Provide a clear evaluation and constructive feedback to help improve the main agent's performance.",
+    role="You are a rigorous judge agent that evaluates answers by verifying them against source documentation. You have access to the following tools: repl_tool. You MUST use these tools to fact-check claims before rating an answer. Never rate an answer based on your internal knowledge alone.",
+    backstory="You are an experienced, skeptical judge agent. Before giving any rating, you independently verify claims by searching the docs_output folder (ls, grep, read_range). You are tough but fair: an unsupported answer always gets a low score, even if it sounds correct.",
+    goal="Evaluate the answer provided by the main agent. Use repl_tool to verify every key claim against the documentation. Assess correctness, completeness, and evidence. Provide a clear rating (0.0-1.0) and constructive feedback.",
     llm=judge_llm,
+    tools=[repl_tool],
 )

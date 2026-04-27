@@ -99,10 +99,10 @@ def search(query: str) -> str:
     return result
 
 
-def grep(filename: str, pattern: str, context_lines: int = 3) -> str:
+def grep(pattern: str, filename: str, context_lines: int = 3) -> str:
     """Search contents of a specific file for pattern. Returns matching lines with context (default 3 lines before/after)."""
     print(
-        f"[TOOL] grep called with: '{filename}', '{pattern}', context_lines={context_lines}"
+        f"[TOOL] grep called with: pattern='{pattern}', filename='{filename}', context_lines={context_lines}"
     )
     if not os.path.exists(DOCS_OUTPUT_DIR):
         print("[TOOL] grep result: docs_output folder does not exist")
@@ -142,34 +142,6 @@ def spawn_subagent(query: str) -> str:
         raise ValueError(f"Error spawning subagent: {type(e).__name__}: {e}")
 
 
-def judge_response(query: str, response: str) -> bool:
-    """Use the model to check if the response adequately answers the query. Returns True if it does, False otherwise."""
-    print(
-        f"[TOOL] judge_response called with query: '{query}' and response length: {len(response)}"
-    )
-    try:
-        agent = get_judge_agent()
-        result = agent.kickoff(
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"""
-                    Given the {response} for this query: {query}\n
-
-                    Give a score between 0.0 to 1.0 for the response's relevance to the query. 
-                    Make sure to also provide a reasoning for your score
-                    """,
-                }
-            ],
-        )
-        print(f"[TOOL] judge_response result: {result}")
-        return str(result).strip().lower() == "yes"
-    except Exception as e:
-        traceback.print_exc()
-        print(f"[TOOL] judge_response error: {type(e).__name__}: {e}")
-        raise ValueError(f"Error judging response: {type(e).__name__}: {e}")
-
-
 def create_repl_tool():
     from crewai.tools import BaseTool
 
@@ -182,10 +154,10 @@ def create_repl_tool():
             "- read_range('filename', start_line, end_line) - read specific line range\n"
             "- ls() - list all files\n"
             "- search('query') - search files by name\n"
-            "- grep('filename', 'pattern', context_lines=3) - search file contents with context\n"
+            "- grep('pattern', 'filename', context_lines=3) - search file contents with context\n"
             "- spawn_subagent('your query in natural language') - break down your task into smaller subtasks and delegate to subagents in natural language\n"
             "VALID examples (write these in your code):\n"
-            "  grep('harrypotter.md', 'three centaurs Forbidden Forest', context_lines=10)\n"
+            "  grep('three centaurs Forbidden Forest', 'harrypotter.md', context_lines=10)\n"
             "  read_range('harrypotter.md', 100, 150)\n"
             "  ls()\n"
             "  read('chapter1.md')\n"
