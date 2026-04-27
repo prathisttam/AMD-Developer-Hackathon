@@ -8,26 +8,39 @@ class JudgeResult(BaseModel):
 
 
 class MainLoop:
-    def __init__(self) -> None:
-        self.best_response = ""
-        self.best_score = 0.0
+    def main_loop(self, query: str) -> str:
+        prompt = query
+        best_response = ""
+        best_score = 0.0
 
-    def main_loop(self, query: str, iteration: int) -> str:
-        if iteration == 5:
-            return self.best_response
+        for _ in range(5):
+            response = main_agent.kickoff(messages=prompt)
 
-        response = main_agent.kickoff(messages=query)
+            judgement = judge_agent.kickoff(
+                messages=f"""
+                For the query: {query}
+                This is the response: {response}
+                Give your judgement for this response.
+                """,
+                response_format=JudgeResult,
+            )
 
-        judgement = judge_agent.kickoff(
-            messages=f"""
-            For the query: {query}\n
-            This is the response: {response}\n
-            Give your judgement for this response.
-            """,
-            response_format=JudgeResult,
-        )
-        return (
-            str(response)
-            if judgement.pydantic.rating > 0.7  # type: ignore
-            else self.main_loop(query, iteration + 1)
-        )
+            rating = judgement.pydantic.rating  # type: ignore
+            reasoning = judgement.pydantic.reasoning  # type: ignore
+
+            if rating > best_score:
+                best_score = rating
+                best_response = str(response)
+
+            if rating > 0.7:
+                return str(response)
+
+            prompt = (
+                f"Original query: {query}\n"
+                f"Your previous response: {response}\n"
+                f"Why it was rejected: {reasoning}\n"
+                "Improve your answer based on the feedback above."
+            )
+
+        return best_response
+
