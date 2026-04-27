@@ -40,6 +40,7 @@ class MainLoop:
             # 3. Try/except around main agent generation
             try:
                 response_obj = main_agent.kickoff(messages=prompt)
+
             except Exception as e:
                 traceback.print_exc()
                 if best_response:
@@ -98,6 +99,7 @@ class MainLoop:
                 reasoning = getattr(pydantic_result, "reasoning", None)
             else:
                 raw_judge = _get_raw_output(judgement)
+
                 rating = _extract_rating(raw_judge)
                 reasoning = raw_judge.strip() if raw_judge else "No reasoning provided."
 
@@ -126,5 +128,16 @@ class MainLoop:
                 f"Why it was rejected: {reasoning}\n"
                 "Improve your answer based on the feedback above. Use the repl_tool to verify your claims against the documentation."
             )
+
+            print(
+                "======================MAIN AGENT RESPONSE==========================="
+            )
+            print(f"MAIN AGENT's RESPONSE: {response}")
+            print(
+                "======================JUDGE AGENT RESPONSE==========================="
+            )
+            print(f"JUDGE AGENT's RATING: {rating}")
+            print(f"JUDGE AGENT's REASONING: {reasoning}")
+            print("==============================================================")
 
         return best_response
