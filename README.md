@@ -16,6 +16,8 @@ Input code → Planner → RLM Loop → Analyzer (LLM) → Reporter → Markdown
 state.json (environment)
 
 ## Quick Start
+- Run `uv venv` to create a virutal environment
+- Run `uv pip install -r requirements.txt` to install dependencies
 
 ## Tech Stack
 - **Agent framework:** CrewAI
