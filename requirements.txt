@@ -6,3 +6,5 @@ crewai
 crewai[tools]
 pytest
 liteparse
+requests
+streamlit
