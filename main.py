@@ -1,4 +1,3 @@
-import os
 import shutil
 from pathlib import Path
 from typing import Annotated
@@ -21,23 +20,28 @@ DOCS_OUTPUT_DIR.mkdir(exist_ok=True)
 app = FastAPI(title="RLM API")
 
 # Use CORS as streamlit runs on port 8501 and FastAPI on port 8000
-app.add_middleware(CORSMiddleware,
-                   allow_origins=["*"],
-                   allow_methods=["*"], #Allows all HTTP Methods (GET, POST, etc)
-                   allow_headers=["*"]
-                   )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],  # Allows all HTTP Methods (GET, POST, etc)
+    allow_headers=["*"],
+)
 
 main_loop = MainLoop()
+
 
 # Schemas
 class ChatRequest(BaseModel):
     message: str
     history: list[dict] = []
 
+
 class ChatResponse(BaseModel):
     response: str
 
+
 # Routes
+
 
 @app.post("/upload_pdf")
 async def upload_pdf(file: Annotated[UploadFile, File()]):
@@ -52,7 +56,7 @@ async def upload_pdf(file: Annotated[UploadFile, File()]):
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
-    
+
     # 3. Parse it into docs_output/
     output_path = DOCS_OUTPUT_DIR / f"{Path(file.filename).stem}.md"
     try:
@@ -61,6 +65,7 @@ async def upload_pdf(file: Annotated[UploadFile, File()]):
         raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {e}")
 
     return {"message": f"{file.filename} uploaded and parsed successfully."}
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
