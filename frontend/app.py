@@ -58,7 +58,7 @@ def send_message(user_text: str) -> str:
                 "message": user_text,
                 "history": st.session_state.history[-4:]
             },
-            timeout=60
+            timeout=300
         )
         resp.raise_for_status()
         return resp.json().get("response", "[No response]")
