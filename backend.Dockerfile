@@ -2,8 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies if your parser needs them (e.g., poppler-utils for pdfs)
-# RUN apt-get update && apt-get install -y poppler-utils && rm -rf /var/lib/apt/lists/*
+# Install system dependencies including Node.js (required for liteparse)
+RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
+RUN npm install -g @llamaindex/liteparse
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
