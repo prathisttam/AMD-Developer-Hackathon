@@ -1,11 +1,14 @@
+import os
 from crewai import Agent, LLM
 from tools.agent_tools import repl_tool
 
-main_llm = LLM(model="ollama/gemma4:latest", base_url="http://localhost:11434")
+OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
-sub_llm = LLM(model="ollama/gemma4:latest", base_url="http://localhost:11434")
+main_llm = LLM(model="ollama/qwen3.5:9b-q4_K_M", base_url=OLLAMA_URL)
 
-judge_llm = LLM(model="ollama/gemma4:latest", base_url="http://localhost:11434")
+sub_llm = LLM(model="ollama/qwen3.5:9b-q4_K_M", base_url=OLLAMA_URL)
+
+judge_llm = LLM(model="ollama/qwen3.5:9b-q4_K_M", base_url=OLLAMA_URL)
 
 main_agent = Agent(
     role="You are a helpful assistant that can read files, execute code, and access documentation to assist with tasks. You have access to the following tools: repl_tool. CRITICAL: Run ls() to list files, then use grep() to search for relevant keywords BEFORE reading entire files. Only read specific line ranges using read_range() after finding matches. Never read entire files - they are too large. IMPORTANT: For ANY search that is too complex, you can break it down into smaller subtasks and delegate to subagents using spawn_subagent() in natural language.",

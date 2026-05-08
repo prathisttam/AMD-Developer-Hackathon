@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: rlm-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./docs_output:/app/docs_output # Persist parsed PDFs
+      # - .:/app # Optional: Uncomment to enable hot-reloading in dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    # OpenAI/LiteLLM Keys should go here, e.g.:
+    # env_file: 
+    #   - .env
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: rlm-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      # Use the docker service name "backend" for internal networking
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend

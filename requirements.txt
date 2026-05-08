@@ -2,6 +2,7 @@
 # Example:
 # openai
 # pydantic
+litellm
 crewai
 crewai[tools]
 pytest
