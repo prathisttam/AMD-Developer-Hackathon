@@ -39,7 +39,6 @@ class ChatResponse(BaseModel):
 
 # Routes
 
-
 @app.post("/upload_pdf")
 async def upload_pdf(file: Annotated[UploadFile, File()]):
     # 1. Validate it is actually a PDF
@@ -59,6 +58,17 @@ async def upload_pdf(file: Annotated[UploadFile, File()]):
 
     return {"message": f"{file.filename} uploaded and parsed successfully."}
 
+@app.delete("/clear_docs/{filename}")
+async def clear_docs(filename: str): 
+    file_path = DOCS_OUTPUT_DIR / f"{Path(filename).stem}.md"   
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:        
+        file_path.unlink()
+        return {"status": "cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear docs: {e}")
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
