@@ -26,7 +26,7 @@ def _get_raw_output(output) -> str:
 
 
 class MainLoop:
-    def main_loop(self, query: str) -> str:
+    async def main_loop(self, query: str) -> str:
         prompt = query
         best_response = ""
         best_score = 0.0
@@ -39,7 +39,7 @@ class MainLoop:
 
             # 3. Try/except around main agent generation
             try:
-                response_obj = main_agent.kickoff(messages=prompt)
+                response_obj = await main_agent.kickoff(messages=prompt)
 
             except Exception as e:
                 traceback.print_exc()
@@ -74,7 +74,7 @@ class MainLoop:
 
             # 2. Try/except around judge evaluation + structured output fallback
             try:
-                judgement = judge_agent.kickoff(
+                judgement = await judge_agent.kickoff(
                     messages=judge_prompt,
                     response_format=JudgeResult,
                 )

@@ -8,3 +8,6 @@ pytest
 liteparse
 requests
 streamlit
+uvicorn
+fastapi
+python-multipart
