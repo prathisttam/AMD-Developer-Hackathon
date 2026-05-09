@@ -15,50 +15,63 @@ if "history" not in st.session_state:
 if "docs_loaded" not in st.session_state:
     st.session_state.docs_loaded = False
 
-if "current_pdf_name" not in st.session_state:
-    st.session_state.current_pdf_name = None
+# 1. Session state to store names f files from the previous run
+if "previous_files_name_list" not in st.session_state:
+    st.session_state["previous_files_name_list"]= set()
 
 #----------------------------------
 # PDF session
 #----------------------------------
-uploaded_pdf = st.file_uploader("Upload your document", type=["pdf"])
-if uploaded_pdf is not None:
-    pdf_bytes = uploaded_pdf.read()
 
-    with st.spinner("Processing PDF..."):
-        try:
-            resp = requests.post(
-                BACKEND_URL + "/upload_pdf",
-                files={"file": (uploaded_pdf.name, pdf_bytes, "application/pdf")},
-                timeout=120
-            )
-            resp.raise_for_status()
+# 2. Render the file uploader
+uploaded_pdfs = st.file_uploader("Upload your document", type=["pdf"], accept_multiple_files=True )
 
-            st.session_state.docs_loaded = True
-            st.session_state.current_pdf_name = uploaded_pdf.name
-            st.success(f"{uploaded_pdf.name} is ready for querying!")
+# 3. Extract the names of the currently uploaded files
+current_files = {file.name for file in uploaded_pdfs} if uploaded_pdfs else set()
 
-        except Exception as e:
-            st.error(f"Upload failed: {e}")
+# 4. Compare the current state against the previous state
+deleted_files = st.session_state["previous_files_name_list"] - current_files
+added_files = current_files - st.session_state["previous_files_name_list"]
 
-else: # When pdf is deleted, lock chat again
-    if st.session_state.docs_loaded:
-        # 1. Tell backend to delete the files
+# 5. Take action based on changes
+if added_files:
+    for pdf_file in uploaded_pdfs:
+        if pdf_file.name in added_files:
+            pdf_bytes = pdf_file.read()
+
+            with st.spinner("Processing PDF..."):
+                try:
+                    resp = requests.post(
+                        BACKEND_URL + "/upload_pdf",
+                        files={"file": (pdf_file.name, pdf_bytes, "application/pdf")},
+                        timeout=120
+                    )
+                    resp.raise_for_status()
+
+                    st.success(f"{pdf_file.name} is ready for querying!")
+                except Exception as e:
+                    st.error(f"Upload failed: {e}")
+
+    st.session_state.docs_loaded = True
+
+if deleted_files:
+    for filename in deleted_files:
         try:
             resp = requests.delete(
-                BACKEND_URL + f"/clear_docs/{st.session_state.current_pdf_name}",
+                BACKEND_URL + f"/clear_docs/{filename}",
                 timeout=120
             )
             resp.raise_for_status()
 
-            # 2. Reset the frontend state
-            st.session_state.docs_loaded = False
-            pdf_name = st.session_state.current_pdf_name
-            st.session_state.current_pdf_name = None
-            st.toast(f"{pdf_name} has been deleted") # Not sure how to add name of pdf deleted, also need to see if toast has to be centralised
+            st.toast(f"{filename} has been deleted")
         except Exception as e:
             st.error(f"Deletion failed: {e}")
-      
+
+    st.session_state.docs_loaded = len(current_files) > 0 
+
+# 6. Update the session state for the next time the app reruns
+st.session_state["previous_files_name_list"] = current_files     
+
 # Render history
 
 # Show warning if no docs
