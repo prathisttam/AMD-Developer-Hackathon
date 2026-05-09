@@ -4,16 +4,41 @@ from tools.agent_tools import repl_tool
 from dotenv import load_dotenv
 
 load_dotenv()
-model = os.getenv("MODEL_NAME")
+MAIN_MODEL_NAME = os.getenv("MAIN_MODEL_NAME")
+MAIN_MODEL_BASE_URL = os.getenv("MAIN_MODEL_BASE_URL")
+MAIN_MODEL_API_KEY = os.getenv("MAIN_MODEL_API_KEY") or "no_key"
 
-if model is None:
-    raise ValueError("MODEL_NAME not loaded from environment")
+SUB_MODEL_NAME = os.getenv("SUB_MODEL_NAME")
+SUB_MODEL_BASE_URL = os.getenv("SUB_MODEL_BASE_URL")
+SUB_MODEL_API_KEY = os.getenv("SUB_MODEL_API_KEY") or "no_key"
 
-main_llm = LLM(model=model, base_url="http://localhost:11434")
 
-sub_llm = LLM(model=model, base_url="http://localhost:11434")
+JUDGE_MODEL_NAME = os.getenv("JUDGE_MODEL_NAME")
+JUDGE_MODEL_BASE_URL = os.getenv("JUDGE_MODEL_BASE_URL")
+JUDGE_MODEL_API_KEY = os.getenv("JUDGE_MODEL_API_KEY") or "no_key"
 
-judge_llm = LLM(model=model, base_url="http://localhost:11434")
+
+if (
+    MAIN_MODEL_NAME is None
+    or MAIN_MODEL_BASE_URL is None
+    or SUB_MODEL_NAME is None
+    or SUB_MODEL_BASE_URL is None
+    or JUDGE_MODEL_NAME is None
+    or JUDGE_MODEL_BASE_URL is None
+):
+    raise ValueError("There are missing environment variables!")
+
+main_llm = LLM(
+    model=MAIN_MODEL_NAME, base_url=MAIN_MODEL_BASE_URL, api_key=MAIN_MODEL_API_KEY
+)
+
+sub_llm = LLM(
+    model=SUB_MODEL_NAME, base_url=SUB_MODEL_API_KEY, api_key=SUB_MODEL_API_KEY
+)
+
+judge_llm = LLM(
+    model=JUDGE_MODEL_NAME, base_url=JUDGE_MODEL_API_KEY, api_key=JUDGE_MODEL_API_KEY
+)
 
 main_agent = Agent(
     role="You are a helpful assistant that can see what files there are and spawn subagents in order to get the insights you require in order to answer the query you are given. You have access to the following tools: repl_tool. CRITICAL: Run ls() to list files. Never read entire files - they are too large. IMPORTANT: For ANY search, you can should break it down into smaller subtasks and delegate to subagents using spawn_subagent(). ALWAYS store subagent results in variables (e.g., result = spawn_subagent('query')) so you can reference them later when answering the user's question.",
