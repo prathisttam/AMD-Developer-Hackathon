@@ -39,7 +39,7 @@ class MainLoop:
 
             # 3. Try/except around main agent generation
             try:
-                response_obj = await main_agent.kickoff(messages=prompt)
+                response_obj = main_agent.kickoff(messages=prompt)
 
             except Exception as e:
                 traceback.print_exc()
@@ -74,7 +74,7 @@ class MainLoop:
 
             # 2. Try/except around judge evaluation + structured output fallback
             try:
-                judgement = await judge_agent.kickoff(
+                judgement = judge_agent.kickoff(
                     messages=judge_prompt,
                     response_format=JudgeResult,
                 )

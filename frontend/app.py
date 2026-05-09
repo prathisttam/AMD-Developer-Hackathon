@@ -94,7 +94,7 @@ def send_message(user_text: str) -> str:
         resp = requests.post(
             BACKEND_URL + "/chat",
             json={"message": user_text, "history": st.session_state.history[-4:]},
-            timeout=300,
+            timeout=900,
         )
         resp.raise_for_status()
         return resp.json().get("response", "[No response]")
