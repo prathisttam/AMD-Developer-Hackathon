@@ -7,7 +7,10 @@ crewai[tools]
 pytest
 liteparse
 requests
-streamlit
+# streamlit
 uvicorn
-fastapi
+# fastapi
 python-multipart
+streamlit==1.38.0
+starlette==0.38.2
+fastapi==0.115.0
