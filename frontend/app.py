@@ -29,6 +29,7 @@ if "previous_files_name_list" not in st.session_state:
 if "initialised" not in st.session_state:
     shutil.rmtree("docs_output", ignore_errors=True)
     os.makedirs("docs_output", exist_ok=True)
+    st.session_state["initialised"] = True
 
 # ----------------------------------
 # PDF session
