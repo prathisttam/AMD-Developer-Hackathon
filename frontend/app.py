@@ -1,4 +1,5 @@
 import requests
+import shutil
 import streamlit as st
 import sys
 import os
@@ -23,6 +24,11 @@ if "chat_in_progress" not in st.session_state:
 # 1. Session state to store names f files from the previous run
 if "previous_files_name_list" not in st.session_state:
     st.session_state["previous_files_name_list"] = set()
+
+# Delete docs_output on initialisation
+if "initialised" not in st.session_state:
+    shutil.rmtree("docs_output", ignore_errors=True)
+    os.makedirs("docs_output", exist_ok=True)
 
 # ----------------------------------
 # PDF session
