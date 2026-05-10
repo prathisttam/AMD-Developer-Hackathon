@@ -1,32 +1,27 @@
 import os
 import ast
 import io
+import re
+import subprocess
 import traceback
 from contextlib import redirect_stdout
 from crewai import Agent
+from pydantic import PrivateAttr
 
 DOCS_OUTPUT_DIR = "./docs_output"
 
-sub_agent = None
-judge_agent = None
+active_sub_agent: Agent | None = None
 
 
-def get_sub_agent():
-    global sub_agent
-    if sub_agent is None:
-        from rlm.agents import sub_agent as agent
-
-        sub_agent = agent
-    return sub_agent
+def set_active_sub_agent(agent: Agent | None) -> None:
+    global active_sub_agent
+    active_sub_agent = agent
 
 
-def get_judge_agent() -> Agent:
-    global judge_agent
-    if judge_agent is None:
-        from rlm.agents import judge_agent as agent
-
-        judge_agent = agent
-    return judge_agent
+def get_sub_agent() -> Agent:
+    if active_sub_agent is None:
+        raise ValueError("No subagent is configured for this chat request.")
+    return active_sub_agent
 
 
 def read(filename: str, max_chars: int = 10000) -> str:
@@ -99,33 +94,51 @@ def search(query: str) -> str:
     return result
 
 
-def grep(pattern: str, filename: str, context_lines: int = 3) -> str:
-    """Search contents of a specific file for pattern. Returns matching lines with context (default 3 lines before/after)."""
+def grep(
+    pattern: str,
+    filename: str = "",
+    context_lines: int = 3,
+    case_sensitive: bool = False,
+    word_boundary: bool = False,
+    is_regex: bool = True,
+    no_ignore: bool = False,
+    max_results: int = 5,
+) -> str:
+    """Search file contents using ripgrep. If filename is empty, searches all files in docs_output."""
     print(
-        f"[TOOL] grep called with: pattern='{pattern}', filename='{filename}', context_lines={context_lines}"
+        f"[TOOL] grep called with: pattern='{pattern}', filename='{filename}', "
+        f"context_lines={context_lines}, case_sensitive={case_sensitive}, "
+        f"word_boundary={word_boundary}, is_regex={is_regex}, "
+        f"no_ignore={no_ignore}, max_results={max_results}"
     )
     if not os.path.exists(DOCS_OUTPUT_DIR):
-        print("[TOOL] grep result: docs_output folder does not exist")
-        return "docs_output folder does not exist"
-    path = os.path.join(DOCS_OUTPUT_DIR, filename)
-    if not os.path.exists(path):
-        print("[TOOL] grep result: File not found")
+        raise FileNotFoundError("docs_output folder does not exist")
+    search_path = os.path.join(DOCS_OUTPUT_DIR, filename) if filename else DOCS_OUTPUT_DIR
+    if filename and not os.path.exists(search_path):
         raise FileNotFoundError(f"File not found: {filename}")
-    results = []
+    args = ["rg", "--line-number", "-C", str(context_lines), "--max-count", str(max_results)]
+    if not case_sensitive:
+        args.append("-i")
+    if word_boundary:
+        args.append("-w")
+    if not is_regex:
+        args.append("-F")
+    if no_ignore:
+        args.append("--no-ignore")
+    args.append(pattern)
+    args.append(search_path)
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            for i, line in enumerate(lines):
-                if pattern.lower() in line.lower():
-                    start = max(0, i - context_lines)
-                    end = min(len(lines), i + context_lines + 1)
-                    context = "".join(lines[start:end])
-                    results.append(f"=== {filename}:{i + 1} ===\n{context}")
-    except Exception:
-        pass
-    result = "\n---\n".join(results) if results else f"No matches found for: {pattern}"
-    print(f"[TOOL] grep result: {len(results)} matches")
-    return result
+        result = subprocess.run(args, capture_output=True, text=True, timeout=30)
+        if result.returncode == 1:
+            raise ValueError(f"No matches found for: {pattern}")
+        if result.returncode != 0 and result.stderr:
+            raise ValueError(f"ripgrep error: {result.stderr.strip()}")
+        print(f"[TOOL] grep result: {len(result.stdout)} chars")
+        return result.stdout if result.stdout else f"No matches found for: {pattern}"
+    except FileNotFoundError:
+        raise ValueError("ripgrep (rg) is not installed or not found in PATH")
+    except subprocess.TimeoutExpired:
+        raise ValueError("Search timed out after 30 seconds")
 
 
 def spawn_subagent(query: str) -> str:
@@ -154,14 +167,27 @@ def create_repl_tool():
             "- read_range('filename', start_line, end_line) - read specific line range\n"
             "- ls() - list all files\n"
             "- search('query') - search files by name\n"
-            "- grep('pattern', 'filename', context_lines=3) - search file contents with context\n"
+            "- grep(pattern, filename='', context_lines=3, case_sensitive=False, word_boundary=False, is_regex=True, no_ignore=False, max_results=5) - search file contents using ripgrep. Leave filename empty to search all files.\n"
             "- spawn_subagent('your query in natural language') - break down your task into smaller subtasks and delegate to subagents in natural language\n"
+            "CRITICAL PYTHON SYNTAX RULES:\n"
+            "- This is Python code. Use Python syntax, NOT SQL or shell syntax.\n"
+            "- Arguments must be separated by commas: grep('pattern', 'file.md', context_lines=10)\n"
+            "- To search multiple patterns, call grep() multiple times or use regex OR: grep('term1|term2')\n"
+            "- Do NOT use AND/OR operators between strings. Use separate calls or regex | instead.\n"
+            "- Boolean parameters are Python True/False, not strings.\n"
             "VALID examples (write these in your code):\n"
             "  grep('three centaurs Forbidden Forest', 'harrypotter.md', context_lines=10)\n"
+            "  grep('def main', is_regex=False)  # search all files for literal text\n"
+            "  grep('TODO|FIXME', case_sensitive=True)  # regex, case-sensitive in all files\n"
+            "  grep('cost|amortized', 'file.md')  # regex OR for multiple terms\n"
+            "  r1 = grep('cost', 'file.md'); r2 = grep('amortized', 'file.md')  # separate calls\n"
             "  read_range('harrypotter.md', 100, 150)\n"
             "  ls()\n"
             "  read('chapter1.md')\n"
-            "INVALID (DO NOT use):\n"
+            "INVALID (DO NOT use - causes SyntaxError):\n"
+            "  grep('cost' AND 'amortized', 'file.md') - AND is not valid Python\n"
+            "  grep('term1' OR 'term2', 'file.md') - OR is not valid Python syntax here\n"
+            "  grep('pattern' 'file.md' context_lines=10) - missing commas\n"
             "  repl_tool.grep('pattern') - NOT a method call\n"
             "  docs_tool.read('file') - no such object\n"
             "IMPORTANT: The return value of this tool is added to the agent context. "
@@ -171,7 +197,7 @@ def create_repl_tool():
             "  files\n"
             "  print(grep('paper.md', 'RLM'))"
         )
-        _session_globals: dict | None = None
+        _session_globals: dict | None = PrivateAttr(default=None)
 
         def _get_session_globals(self) -> dict:
             if self._session_globals is None:
@@ -215,6 +241,20 @@ def create_repl_tool():
         def _run(self, code: str) -> str:
             try:
                 print(f"[REPL] Executing code:\n{code}\n---")
+                # Detect shell-style grep calls before parsing
+                shell_grep_pattern = re.compile(r'^\s*grep\s+(-[iwsWFalcnAB]\s*\d*\s+)*["\']', re.MULTILINE)
+                if shell_grep_pattern.search(code):
+                    return (
+                        "Error: Shell-style grep syntax detected. "
+                        "grep() is a Python function, not a shell command.\n"
+                        "Use: grep('pattern', 'filename', case_sensitive=False, word_boundary=False, is_regex=True)\n"
+                        "NOT: grep -i 'pattern' 'filename'\n"
+                        "Boolean flags replace shell flags:\n"
+                        "  -i (ignore case) → case_sensitive=False (default)\n"
+                        "  -w (word boundary) → word_boundary=True\n"
+                        "  -F (fixed string) → is_regex=False\n"
+                        "  -A/-B/-C (context lines) → context_lines=N"
+                    )
                 safe_globals = self._get_session_globals()
                 stdout = io.StringIO()
                 last_value = None

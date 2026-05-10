@@ -3,10 +3,11 @@ from typing import Annotated
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Functions to parse pdfs and enter the main loop
 from tools.doc_parser import parse_chat_bytes
+from rlm.agents import AgentLLMConfig
 from rlm.main_loop import MainLoop
 
 # Folder set-up
@@ -28,13 +29,36 @@ main_loop = MainLoop()
 
 
 # Schemas
+class LLMConfigRequest(BaseModel):
+    model_name: str
+    base_url: str
+    api_key: str
+
+
 class ChatRequest(BaseModel):
     message: str
-    history: list[dict] = []
+    history: list[dict] = Field(default_factory=list)
+    main_judge_config: LLMConfigRequest
+    subagent_config: LLMConfigRequest
 
 
 class ChatResponse(BaseModel):
     response: str
+
+
+def _validated_agent_config(label: str, config: LLMConfigRequest) -> AgentLLMConfig:
+    values = {
+        "model_name": config.model_name.strip(),
+        "base_url": config.base_url.strip(),
+        "api_key": config.api_key.strip(),
+    }
+    missing = [field for field, value in values.items() if not value]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{label} config is missing: {', '.join(missing)}",
+        )
+    return AgentLLMConfig(**values)
 
 
 # Routes
@@ -75,8 +99,17 @@ async def chat(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
+    main_judge_config = _validated_agent_config(
+        "Main/judge agent", request.main_judge_config
+    )
+    subagent_config = _validated_agent_config("Subagent", request.subagent_config)
+
     try:
-        response = await main_loop.main_loop(request.message)
+        response = await main_loop.main_loop(
+            request.message,
+            main_judge_config=main_judge_config,
+            subagent_config=subagent_config,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {e}")
 
