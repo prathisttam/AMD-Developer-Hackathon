@@ -2,7 +2,8 @@ import os
 from crewai import Agent, LLM
 from tools.agent_tools import repl_tool
 
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+#OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_URL = "http://172.20.112.1:11434"
 
 main_llm = LLM(model="ollama/qwen3.5:9b-q4_K_M", base_url=OLLAMA_URL)
 
