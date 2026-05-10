@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
-import sys, os
+import sys
+import os
 
 sys.path.append(os.path.abspath(".."))  # add parent folder
 
@@ -94,7 +95,6 @@ def send_message(user_text: str) -> str:
         resp = requests.post(
             BACKEND_URL + "/chat",
             json={"message": user_text, "history": st.session_state.history[-4:]},
-            timeout=300,
         )
         resp.raise_for_status()
         return resp.json().get("response", "[No response]")
@@ -123,4 +123,3 @@ if user_input:
             st.write(reply)
 
     st.session_state.history.append({"role": "assistant", "content": reply})
-

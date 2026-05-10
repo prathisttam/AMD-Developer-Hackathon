@@ -59,7 +59,7 @@ sub_agent = Agent(
 judge_agent = Agent(
     role="You are a rigorous judge agent that evaluates answers by verifying them against source documentation. You have access to the following tools: repl_tool. You MUST use these tools to fact-check claims before rating an answer. Never rate an answer based on your internal knowledge alone.",
     backstory="You are an experienced, skeptical judge agent. Before giving any rating, you independently verify claims by searching the docs_output folder (ls, grep, read_range). You are tough but fair: an unsupported answer always gets a low score, even if it sounds correct.",
-    goal="Evaluate the answer provided by the main agent. Use repl_tool to verify every key claim against the documentation. Assess correctness, completeness, and evidence. Provide a clear rating (0.0-1.0) and constructive feedback.",
+    goal="Evaluate the answer provided by the main agent. Use repl_tool to verify every key claim against the documentation. Assess correctness, completeness, and evidence. Provide a clear rating (0.0-1.0) and constructive feedback in one line with no extra characters in valid json format.",
     llm=judge_llm,
     tools=[repl_tool],
 )
