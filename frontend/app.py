@@ -6,7 +6,7 @@ import os
 
 sys.path.append(os.path.abspath(".."))  # add parent folder
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="lablab.ai hackathon")
 st.title("RLM Chat")
@@ -30,6 +30,64 @@ if "initialised" not in st.session_state:
     shutil.rmtree("docs_output", ignore_errors=True)
     os.makedirs("docs_output", exist_ok=True)
     st.session_state["initialised"] = True
+
+
+with st.sidebar:
+    st.header("Agent settings")
+
+    st.subheader("Main / Judge Agent")
+    st.caption("Follow CrewAI formatting")
+    st.text_input(
+        "Model name",
+        key="main_judge_model_name",
+        disabled=st.session_state.chat_in_progress,
+    )
+    st.text_input(
+        "Base URL",
+        key="main_judge_base_url",
+        disabled=st.session_state.chat_in_progress,
+    )
+    st.text_input(
+        "API key",
+        key="main_judge_api_key",
+        type="password",
+        disabled=st.session_state.chat_in_progress,
+    )
+
+    st.subheader("Subagent")
+    st.text_input(
+        "Model name",
+        key="subagent_model_name",
+        disabled=st.session_state.chat_in_progress,
+    )
+    st.text_input(
+        "Base URL",
+        key="subagent_base_url",
+        disabled=st.session_state.chat_in_progress,
+    )
+    st.text_input(
+        "API key",
+        key="subagent_api_key",
+        type="password",
+        disabled=st.session_state.chat_in_progress,
+    )
+
+
+def build_llm_config(prefix: str) -> dict:
+    return {
+        "model_name": st.session_state[f"{prefix}_model_name"].strip(),
+        "base_url": st.session_state[f"{prefix}_base_url"].strip(),
+        "api_key": st.session_state[f"{prefix}_api_key"].strip(),
+    }
+
+
+def llm_configs_ready() -> bool:
+    return all(
+        build_llm_config(prefix)[field]
+        for prefix in ("main_judge", "subagent")
+        for field in ("model_name", "base_url", "api_key")
+    )
+
 
 # ----------------------------------
 # PDF session
@@ -90,6 +148,9 @@ st.session_state["previous_files_name_list"] = current_files
 if not st.session_state.docs_loaded:
     st.info("Please upload a PDF first before asking questions.")
 
+if not llm_configs_ready():
+    st.info("Enter model settings for both agent groups before asking questions.")
+
 for turn in st.session_state.history:
     with st.chat_message(turn["role"]):
         st.write(turn["content"])
@@ -101,7 +162,12 @@ def send_message(user_text: str) -> str:
         st.session_state.chat_in_progress = True
         resp = requests.post(
             BACKEND_URL + "/chat",
-            json={"message": user_text, "history": st.session_state.history[-4:]},
+            json={
+                "message": user_text,
+                "history": st.session_state.history[-4:],
+                "main_judge_config": build_llm_config("main_judge"),
+                "subagent_config": build_llm_config("subagent"),
+            },
         )
         resp.raise_for_status()
         return resp.json().get("response", "[No response]")
@@ -113,7 +179,12 @@ def send_message(user_text: str) -> str:
 
 # Chat input (disabled if no docs)
 user_input = st.chat_input(
-    "Ask something about your PDF...", disabled=not st.session_state.docs_loaded
+    "Ask something about your PDF...",
+    disabled=(
+        not st.session_state.docs_loaded
+        or not llm_configs_ready()
+        or st.session_state.chat_in_progress
+    ),
 )
 
 if user_input:

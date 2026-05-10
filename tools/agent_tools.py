@@ -10,26 +10,18 @@ from pydantic import PrivateAttr
 
 DOCS_OUTPUT_DIR = "./docs_output"
 
-sub_agent = None
-judge_agent = None
+active_sub_agent: Agent | None = None
 
 
-def get_sub_agent():
-    global sub_agent
-    if sub_agent is None:
-        from rlm.agents import sub_agent as agent
-
-        sub_agent = agent
-    return sub_agent
+def set_active_sub_agent(agent: Agent | None) -> None:
+    global active_sub_agent
+    active_sub_agent = agent
 
 
-def get_judge_agent() -> Agent:
-    global judge_agent
-    if judge_agent is None:
-        from rlm.agents import judge_agent as agent
-
-        judge_agent = agent
-    return judge_agent
+def get_sub_agent() -> Agent:
+    if active_sub_agent is None:
+        raise ValueError("No subagent is configured for this chat request.")
+    return active_sub_agent
 
 
 def read(filename: str, max_chars: int = 10000) -> str:
