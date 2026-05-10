@@ -33,11 +33,11 @@ main_llm = LLM(
 )
 
 sub_llm = LLM(
-    model=SUB_MODEL_NAME, base_url=SUB_MODEL_API_KEY, api_key=SUB_MODEL_API_KEY
+    model=SUB_MODEL_NAME, base_url=SUB_MODEL_BASE_URL, api_key=SUB_MODEL_API_KEY
 )
 
 judge_llm = LLM(
-    model=JUDGE_MODEL_NAME, base_url=JUDGE_MODEL_API_KEY, api_key=JUDGE_MODEL_API_KEY
+    model=JUDGE_MODEL_NAME, base_url=JUDGE_MODEL_BASE_URL, api_key=JUDGE_MODEL_API_KEY
 )
 
 main_agent = Agent(
